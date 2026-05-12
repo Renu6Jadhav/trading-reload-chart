@@ -24,6 +24,25 @@ type ExistingCandlesLayerOptions = {
 	priceRange?: number;
 
 	priceCenter?: number;
+
+	/**
+	 * Enable automatic scrolling
+	 * when latest candle moves
+	 */
+	autoFollowLatestCandle?: boolean;
+
+	/**
+	 * Number of candles from right edge
+	 * where auto-follow becomes active.
+	 *
+	 * 0 = only when latest candle reaches right edge
+	 *
+	 * Example:
+	 * 10 = auto-follow activates when
+	 * latest candle reaches 10th position
+	 * from right edge
+	 */
+	autoFollowThresholdCandles?: number;
 };
 
 export class ExistingCandlesLayer {
@@ -63,6 +82,22 @@ export class ExistingCandlesLayer {
 	 */
 	priceCenter: number;
 
+	/**
+	 * Auto-follow feature enabled
+	 */
+	autoFollowLatestCandle: boolean;
+
+	/**
+	 * Runtime follow state
+	 */
+	isFollowingLatest = true;
+
+	/**
+	 * Threshold from right edge
+	 * where auto-follow activates
+	 */
+	autoFollowThresholdCandles: number;
+
 	constructor(options: ExistingCandlesLayerOptions) {
 		this.#canvas = options.canvas;
 
@@ -90,6 +125,14 @@ export class ExistingCandlesLayer {
 			options.backgroundColor ?? CHART_CONFIG.colors.background;
 
 		this.zoomX = options.zoomX ?? 1;
+
+		this.autoFollowLatestCandle =
+			options.autoFollowLatestCandle ??
+			CHART_CONFIG.candles.autoFollowLatestCandle;
+
+		this.autoFollowThresholdCandles =
+			options.autoFollowThresholdCandles ??
+			CHART_CONFIG.candles.autoFollowThresholdCandles;
 
 		const totalChartWidth = this.candles.length * this.candleSpacing;
 
@@ -160,6 +203,17 @@ export class ExistingCandlesLayer {
 		this.priceRange = rawPriceRange + verticalPadding;
 	}
 
+	isWithinAutoFollowThreshold() {
+		const totalChartWidth = this.candles.length * this.candleSpacing;
+
+		const rightGap = this.#canvas.width - (totalChartWidth + this.offsetX);
+
+		const thresholdPixels =
+			this.autoFollowThresholdCandles * this.candleSpacing;
+
+		return rightGap <= thresholdPixels + 5;
+	}
+
 	updateLiveCandle(candle: Candle) {
 		const lastCandle = this.candles.at(-1);
 
@@ -183,6 +237,13 @@ export class ExistingCandlesLayer {
 		 * Append new live candle
 		 */
 		this.candles.push(candle);
+
+		/**
+		 * Auto-follow latest candle
+		 */
+		if (this.autoFollowLatestCandle && this.isFollowingLatest) {
+			this.offsetX -= this.candleSpacing;
+		}
 	}
 
 	get candleWidth() {
@@ -227,6 +288,11 @@ export class ExistingCandlesLayer {
 
 	panHorizontally(deltaX: number) {
 		this.offsetX += deltaX;
+
+		/**
+		 * Update follow state
+		 */
+		this.isFollowingLatest = this.isWithinAutoFollowThreshold();
 	}
 
 	panVertically(deltaY: number) {
@@ -261,6 +327,11 @@ export class ExistingCandlesLayer {
 		 * Keep viewport right edge fixed
 		 */
 		this.offsetX = this.#canvas.width - rightEdgeIndex * this.candleSpacing;
+
+		/**
+		 * Update follow state
+		 */
+		this.isFollowingLatest = this.isWithinAutoFollowThreshold();
 	}
 
 	zoomVertically(delta: number) {
@@ -273,11 +344,7 @@ export class ExistingCandlesLayer {
 		this.priceRange = Math.max(
 			min,
 
-			Math.min(
-				this.priceRange,
-
-				max,
-			),
+			Math.min(this.priceRange, max),
 		);
 	}
 
@@ -317,6 +384,14 @@ export class ExistingCandlesLayer {
 			candles: visibleCandles,
 
 			startIndex,
+
+			chartHeight,
+		});
+
+		this.drawLivePriceLine({
+			ctx,
+
+			chartWidth,
 
 			chartHeight,
 		});
@@ -448,6 +523,7 @@ export class ExistingCandlesLayer {
 
 		const candleBodyHeight = Math.max(
 			Math.abs(closeY - openY),
+
 			CHART_CONFIG.candles.minBodyHeight,
 		);
 
@@ -460,6 +536,60 @@ export class ExistingCandlesLayer {
 
 			candleBodyHeight,
 		);
+	}
+
+	drawLivePriceLine({
+		ctx,
+
+		chartWidth,
+
+		chartHeight,
+	}: {
+		ctx: CanvasRenderingContext2D;
+
+		chartWidth: number;
+
+		chartHeight: number;
+	}) {
+		const latestCandle = this.candles.at(-1);
+
+		if (!latestCandle) {
+			return;
+		}
+
+		const latestPrice = latestCandle.close;
+
+		const lineY = this.priceToY(
+			latestPrice,
+
+			chartHeight,
+		);
+
+		const lineColor =
+			latestCandle.close >= latestCandle.open
+				? this.bullishColor
+				: this.bearishColor;
+
+		ctx.save();
+		ctx.globalAlpha = CHART_CONFIG.candles.livePriceLine.opacity;
+		ctx.strokeStyle = lineColor;
+
+		ctx.lineWidth = 1;
+
+		/**
+		 * TradingView-like dashed line
+		 */
+		ctx.setLineDash([4, 4]);
+
+		ctx.beginPath();
+
+		ctx.moveTo(0, lineY);
+
+		ctx.lineTo(chartWidth, lineY);
+
+		ctx.stroke();
+
+		ctx.restore();
 	}
 
 	priceToY(
