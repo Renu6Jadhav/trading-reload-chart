@@ -1,337 +1,156 @@
-import type { Candle } from "../models/Candle";
-import type { ChartTheme } from "../models/Theme";
-import type { Viewport } from "../core/Viewport";
-import { CoordinateSystem } from "../core/CoordinateSystem";
-
+import type { Candle } from "../../models/Candle";
 
 type ExistingCandlesLayerOptions = {
-    ctx: CanvasRenderingContext2D;
+	canvas: HTMLCanvasElement;
 
-    theme: ChartTheme;
+	candles: Candle[];
 
-    viewport: Viewport;
+	candleWidth?: number;
 
-    coordinateSystem: CoordinateSystem;
+	candleGap?: number;
 
-    candleWidth: number;
+	bullishColor?: string;
 
-    candleGap: number;
+	bearishColor?: string;
 
-    wickWidth?: number;
-
-    borderRadius?: number;
-
-    showVolume?: boolean;
-
-    volumeHeight?: number;
+	backgroundColor?: string;
 };
 
 export class ExistingCandlesLayer {
-    private ctx: CanvasRenderingContext2D;
+	readonly #canvas: HTMLCanvasElement;
 
-    private theme: ChartTheme;
+	readonly #ctx: CanvasRenderingContext2D;
 
-    private viewport: Viewport;
+	candles: Candle[];
 
-    private coordinateSystem: CoordinateSystem;
+	candleWidth: number;
 
-    private candleWidth: number;
+	candleGap: number;
 
-    private candleGap: number;
+	bullishColor: string;
 
-    private wickWidth: number;
+	bearishColor: string;
 
-    private borderRadius: number;
+	backgroundColor: string;
 
-    private showVolume: boolean;
+	constructor(options: ExistingCandlesLayerOptions) {
+		this.#canvas = options.canvas;
 
-    private volumeHeight: number;
+		const ctx = this.#canvas.getContext("2d");
 
-    constructor(options: ExistingCandlesLayerOptions) {
-        this.ctx = options.ctx;
+		if (!ctx) {
+			throw new Error("Canvas 2D context not supported");
+		}
 
-        this.theme = options.theme;
+		this.#ctx = ctx;
 
-        this.viewport = options.viewport;
+		this.candles = options.candles;
+		this.candleWidth = options.candleWidth ?? 8;
 
-        this.coordinateSystem = options.coordinateSystem;
+		this.candleGap = options.candleGap ?? 2;
 
-        this.candleWidth = options.candleWidth;
+		this.bullishColor = options.bullishColor ?? "#22c55e";
 
-        this.candleGap = options.candleGap;
+		this.bearishColor = options.bearishColor ?? "#ef4444";
 
-        this.wickWidth = options.wickWidth ?? 1;
+		this.backgroundColor = options.backgroundColor ?? "#0f172a";
+	}
 
-        this.borderRadius = options.borderRadius ?? 0;
+	render() {
+		const ctx = this.#ctx;
 
-        this.showVolume = options.showVolume ?? true;
+		const canvasWidth = this.#canvas.width;
 
-        this.volumeHeight = options.volumeHeight ?? 120;
-    }
+		const canvasHeight = this.#canvas.height;
 
-    render(candles: Candle[]) {
-        const ctx = this.ctx;
+		/**
+		 * Background
+		 */
+		ctx.fillStyle = this.backgroundColor;
 
-        ctx.clearRect(
-            0,
-            0,
-            this.viewport.width,
-            this.viewport.height
-        );
+		ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-        if (candles.length <= 1) return;
+		if (this.candles.length === 0) {
+			return;
+		}
 
-        /**
-         * Exclude live candle.
-         * Last candle should render in LiveCandleLayer.
-         */
-        const historicalCandles = candles.slice(0, -1);
+		/**
+		 * Ignore last candle for now.
+		 * Live candle will come later.
+		 */
+		const candles = this.candles.slice(0, -1);
 
-        const processedCandles =
-            this.processCandles(historicalCandles);
+		/**
+		 * Find visible price range
+		 */
+		let minPrice = Number.POSITIVE_INFINITY;
 
-        ctx.save();
+		let maxPrice = Number.NEGATIVE_INFINITY;
 
-        for (const candle of processedCandles) {
-            this.drawCandle(candle);
-        }
+		for (const candle of candles) {
+			if (candle.low < minPrice) {
+				minPrice = candle.low;
+			}
 
-        if (this.showVolume) {
-            for (const candle of processedCandles) {
-                this.drawVolume(candle);
-            }
-        }
+			if (candle.high > maxPrice) {
+				maxPrice = candle.high;
+			}
+		}
 
-        ctx.restore();
-    }
+		const priceRange = maxPrice - minPrice;
 
-    private processCandles(
-        candles: Candle[]
-    ): ProcessedCandle[] {
-        const processed: ProcessedCandle[] = [];
+		/**
+		 * Draw candles
+		 */
+		for (let i = 0; i < candles.length; i++) {
+			const candle = candles[i];
 
-        const volumeMax = this.getMaxVolume(candles);
+			const x = i * (this.candleWidth + this.candleGap);
 
-        for (let i = 0; i < candles.length; i++) {
-            const candle = candles[i];
+			/**
+			 * Stop drawing outside viewport
+			 */
+			if (x > canvasWidth) {
+				break;
+			}
 
-            const x =
-                this.coordinateSystem.indexToX(i);
+			const openY = canvasHeight - ((candle.open - minPrice) / priceRange) * canvasHeight;
 
-            /**
-             * Skip invisible candles.
-             */
-            if (
-                x + this.candleWidth < 0 ||
-                x > this.viewport.width
-            ) {
-                continue;
-            }
+			const closeY = canvasHeight - ((candle.close - minPrice) / priceRange) * canvasHeight;
 
-            const openY =
-                this.coordinateSystem.priceToY(
-                    candle.open
-                );
+			const highY = canvasHeight - ((candle.high - minPrice) / priceRange) * canvasHeight;
 
-            const highY =
-                this.coordinateSystem.priceToY(
-                    candle.high
-                );
+			const lowY = canvasHeight - ((candle.low - minPrice) / priceRange) * canvasHeight;
 
-            const lowY =
-                this.coordinateSystem.priceToY(
-                    candle.low
-                );
+			const bullish = candle.close >= candle.open;
 
-            const closeY =
-                this.coordinateSystem.priceToY(
-                    candle.close
-                );
+			const color = bullish ? this.bullishColor : this.bearishColor;
 
-            const bullish =
-                candle.close >= candle.open;
+			ctx.strokeStyle = color;
 
-            const bodyY = Math.min(openY, closeY);
+			ctx.fillStyle = color;
 
-            const bodyHeight = Math.max(
-                Math.abs(closeY - openY),
-                1
-            );
+			/**
+			 * Wick
+			 */
+			const centerX = x + this.candleWidth / 2;
 
-            let volumeY = 0;
-            let volumeHeight = 0;
+			ctx.beginPath();
 
-            if (this.showVolume) {
-                volumeHeight =
-                    (candle.volume / volumeMax) *
-                    this.volumeHeight;
-
-                volumeY =
-                    this.viewport.height -
-                    volumeHeight;
-            }
-
-            processed.push({
-                x,
-
-                openY,
-                highY,
-                lowY,
-                closeY,
-
-                bodyY,
-                bodyHeight,
+			ctx.moveTo(centerX, highY);
 
-                width: this.candleWidth,
+			ctx.lineTo(centerX, lowY);
 
-                bullish,
-
-                volumeY,
-                volumeHeight
-            });
-        }
-
-        return processed;
-    }
-
-    private drawCandle(candle: ProcessedCandle) {
-        const ctx = this.ctx;
-
-        const color = candle.bullish
-            ? this.theme.bullishCandle
-            : this.theme.bearishCandle;
-
-        ctx.strokeStyle = color;
-
-        ctx.fillStyle = color;
-
-        ctx.lineWidth = this.wickWidth;
-
-        const centerX =
-            candle.x + candle.width / 2;
-
-        /**
-         * Wick
-         */
-        ctx.beginPath();
-
-        ctx.moveTo(centerX, candle.highY);
-
-        ctx.lineTo(centerX, candle.lowY);
-
-        ctx.stroke();
-
-        /**
-         * Body
-         */
-        if (this.borderRadius <= 0) {
-            ctx.fillRect(
-                candle.x,
-                candle.bodyY,
-                candle.width,
-                candle.bodyHeight
-            );
-
-            return;
-        }
-
-        this.drawRoundedRect(
-            candle.x,
-            candle.bodyY,
-            candle.width,
-            candle.bodyHeight,
-            this.borderRadius
-        );
-    }
-
-    private drawVolume(candle: ProcessedCandle) {
-        if (
-            candle.volumeHeight === undefined ||
-            candle.volumeY === undefined
-        ) {
-            return;
-        }
-
-        const ctx = this.ctx;
-
-        ctx.fillStyle = candle.bullish
-            ? this.theme.volumeBullish
-            : this.theme.volumeBearish;
-
-        ctx.fillRect(
-            candle.x,
-            candle.volumeY,
-            candle.width,
-            candle.volumeHeight
-        );
-    }
-
-    private drawRoundedRect(
-        x: number,
-        y: number,
-        width: number,
-        height: number,
-        radius: number
-    ) {
-        const ctx = this.ctx;
-
-        ctx.beginPath();
-
-        ctx.moveTo(x + radius, y);
-
-        ctx.lineTo(x + width - radius, y);
-
-        ctx.quadraticCurveTo(
-            x + width,
-            y,
-            x + width,
-            y + radius
-        );
-
-        ctx.lineTo(
-            x + width,
-            y + height - radius
-        );
-
-        ctx.quadraticCurveTo(
-            x + width,
-            y + height,
-            x + width - radius,
-            y + height
-        );
-
-        ctx.lineTo(x + radius, y + height);
-
-        ctx.quadraticCurveTo(
-            x,
-            y + height,
-            x,
-            y + height - radius
-        );
-
-        ctx.lineTo(x, y + radius);
-
-        ctx.quadraticCurveTo(
-            x,
-            y,
-            x + radius,
-            y
-        );
-
-        ctx.closePath();
-
-        ctx.fill();
-    }
-
-    private getMaxVolume(candles: Candle[]) {
-        let max = 0;
-
-        for (const candle of candles) {
-            if (candle.volume > max) {
-                max = candle.volume;
-            }
-        }
-
-        return max || 1;
-    }
+			ctx.stroke();
+
+			/**
+			 * Body
+			 */
+			const bodyY = Math.min(openY, closeY);
+
+			const bodyHeight = Math.max(Math.abs(closeY - openY), 1);
+
+			ctx.fillRect(x, bodyY, this.candleWidth, bodyHeight);
+		}
+	}
 }
