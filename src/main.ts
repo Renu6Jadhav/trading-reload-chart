@@ -1,19 +1,46 @@
 import { ExistingCandlesLayer } from "./canvas/layers/ExistingCandlesLayer";
 
+import { CrosshairLayer } from "./canvas/layers/CrosshairLayer";
+
 import candles from "./demo/mock/candles.json";
+import "./main.css";
 
-const canvas = document.querySelector<HTMLCanvasElement>("#chart");
+const candleCanvas = document.querySelector<HTMLCanvasElement>("#chart");
 
-if (!canvas) {
+const overlayCanvas = document.querySelector<HTMLCanvasElement>("#overlay");
+
+if (!candleCanvas || !overlayCanvas) {
 	throw new Error("Canvas not found");
 }
 
-canvas.width = window.innerWidth;
+/**
+ * =========================
+ * Resize Canvases
+ * =========================
+ */
+const resizeCanvases = () => {
+	const width = window.innerWidth;
 
-canvas.height = window.innerHeight;
+	const height = window.innerHeight;
 
-const layer = new ExistingCandlesLayer({
-	canvas,
+	candleCanvas.width = width;
+
+	candleCanvas.height = height;
+
+	overlayCanvas.width = width;
+
+	overlayCanvas.height = height;
+};
+
+resizeCanvases();
+
+/**
+ * =========================
+ * Layers
+ * =========================
+ */
+const candleLayer = new ExistingCandlesLayer({
+	canvas: candleCanvas,
 
 	candles,
 
@@ -22,36 +49,46 @@ const layer = new ExistingCandlesLayer({
 	baseCandleGap: 4,
 });
 
-layer.render();
+const crosshairLayer = new CrosshairLayer({
+	canvas: overlayCanvas,
+});
+
+/**
+ * =========================
+ * Initial Render
+ * =========================
+ */
+candleLayer.render();
+
+crosshairLayer.render();
 
 /**
  * =========================
  * Zoom Handling
  * =========================
  */
-canvas.addEventListener(
+overlayCanvas.addEventListener(
 	"wheel",
 	(event) => {
 		event.preventDefault();
 
 		const zoomDelta = event.deltaY < 0 ? 1 : -1;
 
+		/**
+		 * Ctrl/Cmd + Wheel
+		 * Vertical zoom
+		 */
 		if (event.ctrlKey || event.metaKey) {
+			candleLayer.zoomVertically(zoomDelta);
+		} else {
 			/**
-			 * Ctrl/Cmd + Wheel
-			 * Vertical zoom
+			 * Default wheel
+			 * Horizontal zoom
 			 */
-			layer.zoomVertically(zoomDelta);
-			layer.render();
-			return;
+			candleLayer.zoomHorizontally(zoomDelta);
 		}
 
-		/**
-		 * Default wheel
-		 * Horizontal zoom
-		 */
-		layer.zoomHorizontally(zoomDelta);
-		layer.render();
+		candleLayer.render();
 	},
 	{
 		passive: false,
@@ -69,7 +106,7 @@ let lastMouseX = 0;
 
 let lastMouseY = 0;
 
-canvas.addEventListener("mousedown", (event) => {
+overlayCanvas.addEventListener("mousedown", (event) => {
 	isDragging = true;
 
 	lastMouseX = event.clientX;
@@ -82,6 +119,20 @@ window.addEventListener("mouseup", () => {
 });
 
 window.addEventListener("mousemove", (event) => {
+	/**
+	 * Crosshair
+	 */
+	crosshairLayer.updateMousePosition(
+		event.clientX,
+
+		event.clientY,
+	);
+
+	crosshairLayer.render();
+
+	/**
+	 * Panning
+	 */
 	if (!isDragging) {
 		return;
 	}
@@ -94,11 +145,22 @@ window.addEventListener("mousemove", (event) => {
 
 	lastMouseY = event.clientY;
 
-	layer.panHorizontally(deltaX);
+	candleLayer.panHorizontally(deltaX);
 
-	layer.panVertically(deltaY);
+	candleLayer.panVertically(deltaY);
 
-	layer.render();
+	candleLayer.render();
+});
+
+/**
+ * =========================
+ * Hide Crosshair
+ * =========================
+ */
+overlayCanvas.addEventListener("mouseleave", () => {
+	crosshairLayer.hide();
+
+	crosshairLayer.render();
 });
 
 /**
@@ -107,9 +169,9 @@ window.addEventListener("mousemove", (event) => {
  * =========================
  */
 window.addEventListener("resize", () => {
-	canvas.width = window.innerWidth;
+	resizeCanvases();
 
-	canvas.height = window.innerHeight;
+	candleLayer.render();
 
-	layer.render();
+	crosshairLayer.render();
 });

@@ -25,6 +25,14 @@ export const CHART_CONFIG = {
 		minBodyHeight: 1,
 	},
 
+	crosshair: {
+		color: "rgba(255,255,255,0.35)",
+
+		thickness: 1,
+
+		style: "dashed",
+	},
+
 	colors: {
 		bullish: "#22c55e",
 
