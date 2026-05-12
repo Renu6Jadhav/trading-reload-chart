@@ -38,6 +38,6 @@ export const CHART_CONFIG = {
 
 		bearish: "#ef4444",
 
-		background: "#0f172a",
+		background: "#11131a",
 	},
 } as const;

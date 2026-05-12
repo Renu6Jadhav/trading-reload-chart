@@ -19,11 +19,11 @@ type ExistingCandlesLayerOptions = {
 
 	offsetX?: number;
 
-	offsetY?: number;
-
 	zoomX?: number;
 
-	zoomY?: number;
+	priceRange?: number;
+
+	priceCenter?: number;
 };
 
 export class ExistingCandlesLayer {
@@ -49,19 +49,19 @@ export class ExistingCandlesLayer {
 	offsetX: number;
 
 	/**
-	 * Camera vertical offset
-	 */
-	offsetY: number;
-
-	/**
 	 * Horizontal zoom level
 	 */
 	zoomX: number;
 
 	/**
-	 * Vertical zoom level
+	 * Camera vertical range
 	 */
-	zoomY: number;
+	priceRange: number;
+
+	/**
+	 * Camera vertical center
+	 */
+	priceCenter: number;
 
 	constructor(options: ExistingCandlesLayerOptions) {
 		this.#canvas = options.canvas;
@@ -91,13 +91,73 @@ export class ExistingCandlesLayer {
 
 		this.zoomX = options.zoomX ?? 1;
 
-		this.zoomY = options.zoomY ?? 1;
-
-		this.offsetY = options.offsetY ?? 0;
-
 		const totalChartWidth = this.candles.length * this.candleSpacing;
 
 		this.offsetX = options.offsetX ?? this.#canvas.width - totalChartWidth;
+
+		/**
+		 * Initial viewport
+		 */
+		this.priceCenter = 0;
+
+		this.priceRange = 1;
+
+		this.initializeViewport();
+
+		/**
+		 * Manual overrides
+		 */
+		if (options.priceCenter !== undefined) {
+			this.priceCenter = options.priceCenter;
+		}
+
+		if (options.priceRange !== undefined) {
+			this.priceRange = options.priceRange;
+		}
+	}
+
+	initializeViewport() {
+		if (this.candles.length === 0) {
+			this.priceCenter = 100;
+
+			this.priceRange = 20;
+
+			return;
+		}
+
+		const visibleCandleCount = Math.ceil(
+			this.#canvas.width / this.candleSpacing,
+		);
+
+		const visibleCandles = this.candles.slice(
+			Math.max(
+				0,
+
+				this.candles.length - visibleCandleCount,
+			),
+		);
+
+		let minPrice = Number.POSITIVE_INFINITY;
+
+		let maxPrice = Number.NEGATIVE_INFINITY;
+
+		for (const candle of visibleCandles) {
+			if (candle.low < minPrice) {
+				minPrice = candle.low;
+			}
+
+			if (candle.high > maxPrice) {
+				maxPrice = candle.high;
+			}
+		}
+
+		const rawPriceRange = maxPrice - minPrice;
+
+		const verticalPadding = rawPriceRange * 0.2;
+
+		this.priceCenter = (minPrice + maxPrice) / 2;
+
+		this.priceRange = rawPriceRange + verticalPadding;
 	}
 
 	get candleWidth() {
@@ -112,12 +172,44 @@ export class ExistingCandlesLayer {
 		return this.candleWidth + this.candleGap;
 	}
 
+	get minPrice() {
+		return this.priceCenter - this.priceRange / 2;
+	}
+
+	get maxPrice() {
+		return this.priceCenter + this.priceRange / 2;
+	}
+
+	getVisibleRange(chartWidth: number) {
+		const startIndex = Math.max(
+			0,
+
+			Math.floor(-this.offsetX / this.candleSpacing),
+		);
+
+		const endIndex = Math.min(
+			this.candles.length - 1,
+
+			Math.ceil((chartWidth - this.offsetX) / this.candleSpacing),
+		);
+
+		return {
+			startIndex,
+
+			endIndex,
+		};
+	}
+
 	panHorizontally(deltaX: number) {
 		this.offsetX += deltaX;
 	}
 
 	panVertically(deltaY: number) {
-		this.offsetY += deltaY;
+		const chartHeight = this.#canvas.height;
+
+		const priceDelta = (deltaY / chartHeight) * this.priceRange;
+
+		this.priceCenter += priceDelta;
 	}
 
 	zoomHorizontally(delta: number) {
@@ -149,9 +241,19 @@ export class ExistingCandlesLayer {
 	zoomVertically(delta: number) {
 		const { speed, min, max } = CHART_CONFIG.zoom.y;
 
-		this.zoomY += delta * speed;
+		const zoomFactor = 1 - delta * speed;
 
-		this.zoomY = Math.max(min, Math.min(this.zoomY, max));
+		this.priceRange *= zoomFactor;
+
+		this.priceRange = Math.max(
+			min,
+
+			Math.min(
+				this.priceRange,
+
+				max,
+			),
+		);
 	}
 
 	render() {
@@ -175,39 +277,28 @@ export class ExistingCandlesLayer {
 		/**
 		 * Ignore live candle for now
 		 */
-		const candles = this.candles.slice(0, -1);
+		const allCandles = this.candles.slice(0, -1);
 
-		/**
-		 * Price range
-		 */
-		let minPrice = Number.POSITIVE_INFINITY;
+		const {
+			startIndex,
 
-		let maxPrice = Number.NEGATIVE_INFINITY;
+			endIndex,
+		} = this.getVisibleRange(chartWidth);
 
-		for (const candle of candles) {
-			if (candle.low < minPrice) {
-				minPrice = candle.low;
-			}
+		const visibleCandles = allCandles.slice(
+			startIndex,
 
-			if (candle.high > maxPrice) {
-				maxPrice = candle.high;
-			}
-		}
-
-		const priceRange = maxPrice - minPrice || 1;
+			endIndex + 1,
+		);
 
 		this.drawCandles({
 			ctx,
 
-			candles,
+			candles: visibleCandles,
 
-			chartWidth,
+			startIndex,
 
 			chartHeight,
-
-			minPrice,
-
-			priceRange,
 		});
 	}
 
@@ -216,102 +307,72 @@ export class ExistingCandlesLayer {
 
 		candles,
 
-		chartWidth,
+		startIndex,
 
 		chartHeight,
-
-		minPrice,
-
-		priceRange,
 	}: {
 		ctx: CanvasRenderingContext2D;
 
 		candles: Candle[];
 
-		chartWidth: number;
+		startIndex: number;
 
 		chartHeight: number;
-
-		minPrice: number;
-
-		priceRange: number;
 	}) {
-		candles.forEach((candle, candleIndex) => {
-			const candleX = candleIndex * this.candleSpacing + this.offsetX;
+		candles.forEach(
+			(
+				candle,
 
-			/**
-			 * Skip invisible candles on left
-			 */
-			if (candleX + this.candleWidth < 0) {
-				return;
-			}
+				localIndex,
+			) => {
+				const candleIndex = startIndex + localIndex;
 
-			/**
-			 * Stop outside viewport right
-			 */
-			if (candleX > chartWidth) {
-				return;
-			}
+				const candleX = candleIndex * this.candleSpacing + this.offsetX;
 
-			const openY = this.priceToY(
-				candle.open,
+				const openY = this.priceToY(
+					candle.open,
 
-				minPrice,
+					chartHeight,
+				);
 
-				priceRange,
+				const closeY = this.priceToY(
+					candle.close,
 
-				chartHeight,
-			);
+					chartHeight,
+				);
 
-			const closeY = this.priceToY(
-				candle.close,
+				const highY = this.priceToY(
+					candle.high,
 
-				minPrice,
+					chartHeight,
+				);
 
-				priceRange,
+				const lowY = this.priceToY(
+					candle.low,
 
-				chartHeight,
-			);
+					chartHeight,
+				);
 
-			const highY = this.priceToY(
-				candle.high,
+				const candleColor =
+					candle.close >= candle.open ? this.bullishColor : this.bearishColor;
 
-				minPrice,
+				this.drawSingleCandle({
+					ctx,
 
-				priceRange,
+					candleX,
 
-				chartHeight,
-			);
+					openY,
 
-			const lowY = this.priceToY(
-				candle.low,
+					closeY,
 
-				minPrice,
+					highY,
 
-				priceRange,
+					lowY,
 
-				chartHeight,
-			);
-
-			const candleColor =
-				candle.close >= candle.open ? this.bullishColor : this.bearishColor;
-
-			this.drawSingleCandle({
-				ctx,
-
-				candleX,
-
-				openY,
-
-				closeY,
-
-				highY,
-
-				lowY,
-
-				candleColor,
-			});
-		});
+					candleColor,
+				});
+			},
+		);
 	}
 
 	drawSingleCandle({
@@ -384,33 +445,10 @@ export class ExistingCandlesLayer {
 	priceToY(
 		price: number,
 
-		minPrice: number,
-
-		priceRange: number,
-
 		chartHeight: number,
 	) {
-		/**
-		 * Normalize to 0 → 1
-		 */
-		const normalizedPrice = (price - minPrice) / priceRange;
+		const normalizedPrice = (price - this.minPrice) / this.priceRange;
 
-		/**
-		 * Convert to centered space
-		 * -0.5 → +0.5
-		 */
-		const centeredPrice = normalizedPrice - 0.5;
-
-		/**
-		 * Apply vertical zoom
-		 */
-		const zoomedPrice = centeredPrice * this.zoomY;
-
-		/**
-		 * Convert back to 0 → 1
-		 */
-		const finalPrice = zoomedPrice + 0.5;
-
-		return chartHeight - finalPrice * chartHeight + this.offsetY;
+		return chartHeight - normalizedPrice * chartHeight;
 	}
 }
