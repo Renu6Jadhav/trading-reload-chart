@@ -19,6 +19,8 @@ type ExistingCandlesLayerOptions = {
 
 	offsetX?: number;
 
+	offsetY?: number;
+
 	zoomX?: number;
 
 	zoomY?: number;
@@ -45,6 +47,11 @@ export class ExistingCandlesLayer {
 	 * Camera horizontal offset
 	 */
 	offsetX: number;
+
+	/**
+	 * Camera vertical offset
+	 */
+	offsetY: number;
 
 	/**
 	 * Horizontal zoom level
@@ -86,6 +93,8 @@ export class ExistingCandlesLayer {
 
 		this.zoomY = options.zoomY ?? 1;
 
+		this.offsetY = options.offsetY ?? 0;
+
 		const totalChartWidth = this.candles.length * this.candleSpacing;
 
 		this.offsetX = options.offsetX ?? this.#canvas.width - totalChartWidth;
@@ -103,10 +112,12 @@ export class ExistingCandlesLayer {
 		return this.candleWidth + this.candleGap;
 	}
 
-	pan(deltaX: number) {
+	panHorizontally(deltaX: number) {
 		this.offsetX += deltaX;
+	}
 
-		this.render();
+	panVertically(deltaY: number) {
+		this.offsetY += deltaY;
 	}
 
 	zoomHorizontally(delta: number) {
@@ -133,8 +144,6 @@ export class ExistingCandlesLayer {
 		 * Keep viewport right edge fixed
 		 */
 		this.offsetX = this.#canvas.width - rightEdgeIndex * this.candleSpacing;
-
-		this.render();
 	}
 
 	zoomVertically(delta: number) {
@@ -143,8 +152,6 @@ export class ExistingCandlesLayer {
 		this.zoomY += delta * speed;
 
 		this.zoomY = Math.max(min, Math.min(this.zoomY, max));
-
-		this.render();
 	}
 
 	render() {
@@ -404,6 +411,6 @@ export class ExistingCandlesLayer {
 		 */
 		const finalPrice = zoomedPrice + 0.5;
 
-		return chartHeight - finalPrice * chartHeight;
+		return chartHeight - finalPrice * chartHeight + this.offsetY;
 	}
 }

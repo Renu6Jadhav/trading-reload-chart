@@ -19,14 +19,14 @@ const layer = new ExistingCandlesLayer({
 
 	baseCandleWidth: 8,
 
-	candleGap: 4,
+	baseCandleGap: 4,
 });
 
 layer.render();
 
 /**
  * =========================
- * Horizontal / Vertical Zoom
+ * Zoom Handling
  * =========================
  */
 canvas.addEventListener(
@@ -36,13 +36,13 @@ canvas.addEventListener(
 
 		const zoomDelta = event.deltaY < 0 ? 1 : -1;
 
-		/**
-		 * Ctrl/Cmd + Wheel
-		 * Vertical zoom
-		 */
 		if (event.ctrlKey || event.metaKey) {
+			/**
+			 * Ctrl/Cmd + Wheel
+			 * Vertical zoom
+			 */
 			layer.zoomVertically(zoomDelta);
-
+			layer.render();
 			return;
 		}
 
@@ -51,6 +51,7 @@ canvas.addEventListener(
 		 * Horizontal zoom
 		 */
 		layer.zoomHorizontally(zoomDelta);
+		layer.render();
 	},
 	{
 		passive: false,
@@ -59,17 +60,21 @@ canvas.addEventListener(
 
 /**
  * =========================
- * Horizontal Panning
+ * Panning
  * =========================
  */
 let isDragging = false;
 
 let lastMouseX = 0;
 
+let lastMouseY = 0;
+
 canvas.addEventListener("mousedown", (event) => {
 	isDragging = true;
 
 	lastMouseX = event.clientX;
+
+	lastMouseY = event.clientY;
 });
 
 window.addEventListener("mouseup", () => {
@@ -83,9 +88,17 @@ window.addEventListener("mousemove", (event) => {
 
 	const deltaX = event.clientX - lastMouseX;
 
+	const deltaY = event.clientY - lastMouseY;
+
 	lastMouseX = event.clientX;
 
-	layer.pan(deltaX);
+	lastMouseY = event.clientY;
+
+	layer.panHorizontally(deltaX);
+
+	layer.panVertically(deltaY);
+
+	layer.render();
 });
 
 /**
