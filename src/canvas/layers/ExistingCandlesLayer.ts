@@ -142,7 +142,7 @@ export class ExistingCandlesLayer {
 				maxPrice = candle.high;
 			}
 		}
-		const rawPriceRange = maxPrice - minPrice;
+		const rawPriceRange = normalizePrice(maxPrice - minPrice);
 		const verticalPadding = rawPriceRange * 0.2;
 		this.priceCenter = (minPrice + maxPrice) / 2;
 		this.priceRange = rawPriceRange + verticalPadding;
