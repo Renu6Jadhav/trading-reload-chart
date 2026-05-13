@@ -9,7 +9,7 @@ import "./main.css";
 const candleCanvas = document.querySelector<HTMLCanvasElement>("#chart");
 const overlayCanvas = document.querySelector<HTMLCanvasElement>("#overlay");
 const tradesCanvas = document.querySelector<HTMLCanvasElement>("#trades");
-const activeSymbol = "GBPJPY";
+const activeSymbol = "GBPUSD";
 
 if (!candleCanvas || !overlayCanvas || !tradesCanvas) {
 	throw new Error("Canvas not found");
@@ -53,8 +53,8 @@ const handleTradeModified = async ({ ticket, sl, tp }) => {
 	tradeLayer.setIsDragging(false);
 	const body = {
 		ticket,
-		...(tp ? { tp } : {}),
-		...(sl ? { sl } : {}),
+		...(tp !== undefined ? { tp } : {}),
+		...(sl !== undefined ? { sl } : {}),
 	};
 	try {
 		const response = await fetch(`https://api-tradingreload.pradeepjadhav.com/trade/modify`, {
@@ -65,13 +65,13 @@ const handleTradeModified = async ({ ticket, sl, tp }) => {
 		});
 
 		if (!response.ok) {
-			throw new Error(`Failed to fetch candles: ${response.status}`);
+			throw new Error(`Failed to modify the trade: ${response.status}`);
 		}
 
 		const data = await response.json();
 		console.log(data);
 	} catch (error) {
-		console.error("Failed to load candles", error);
+		console.error("Failed to modify the trade", error);
 	}
 };
 

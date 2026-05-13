@@ -1,6 +1,5 @@
 //models/Trade.ts
 export type TradeType = "buy" | "sell";
-type TradeStatus = "open" | "closed";
 
 export type BaseTrade = {
 	ticket: number;

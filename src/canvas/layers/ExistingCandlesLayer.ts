@@ -1,4 +1,5 @@
 import { CHART_CONFIG } from "../../config/chartConfig";
+import { normalizePrice } from "../../helpers/math";
 import type { Candle } from "../../models/Candle";
 import { priceToY } from "./helpers/LayerHelpers";
 
@@ -387,7 +388,7 @@ export class ExistingCandlesLayer {
 			return;
 		}
 
-		const latestPrice = latestCandle.close;
+		const latestPrice = normalizePrice(latestCandle.close);
 		const lineY = priceToY({ price: latestPrice, minPrice: this.minPrice, priceRange: this.priceRange, chartHeight });
 		const lineColor =
 			latestCandle.close >= latestCandle.open

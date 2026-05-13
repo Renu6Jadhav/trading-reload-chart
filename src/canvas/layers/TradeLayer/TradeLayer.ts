@@ -6,6 +6,7 @@ import type {
 	TradeHandleRectConfig,
 	TradeHandleStyleConfig,
 } from "../../../config/chartConfig.types";
+import { normalizePrice } from "../../../helpers/math";
 import type { Candle } from "../../../models/Candle";
 import type { ChartViewport } from "../../../models/ChartViewport";
 import type { OpenTrade } from "../../../models/Trade";
@@ -84,6 +85,41 @@ export class TradeLayer {
 		}
 	}
 
+	createHitBox = ({
+		price,
+		trade,
+		type,
+		x,
+		y,
+		width,
+		height,
+	}: {
+		price: number;
+		trade: OpenTrade;
+		type: TradeHandleType;
+		x: number;
+		y: number;
+		width: number;
+		height: number;
+	}) => {
+		const { showCloseSection, widthClose } = this.getHandleStyleConfig(type).handle;
+		const closeButtonWidth = showCloseSection ? widthClose : 0;
+		const labelAreaWidth = width - closeButtonWidth;
+		const closeButtonAreaX = x + width - closeButtonWidth;
+		return {
+			price: normalizePrice(price),
+			trade,
+			type,
+			x,
+			y,
+			width,
+			height,
+			viewport: this.viewport,
+			labelArea: { x, y, width: labelAreaWidth, height },
+			closeButtonArea: { x: closeButtonAreaX, y, width: closeButtonWidth, height },
+		};
+	};
+
 	drawTrade({ trade }: { trade: OpenTrade }) {
 		this.drawTradeHandle({
 			price: trade.openPrice,
@@ -91,17 +127,21 @@ export class TradeLayer {
 			trade,
 		});
 
-		this.drawTradeHandle({
-			price: trade.sl,
-			type: "stopLoss",
-			trade,
-		});
+		if (trade.sl) {
+			this.drawTradeHandle({
+				price: trade.sl,
+				type: "stopLoss",
+				trade,
+			});
+		}
 
-		this.drawTradeHandle({
-			price: trade.tp,
-			type: "takeProfit",
-			trade,
-		});
+		if (trade.tp) {
+			this.drawTradeHandle({
+				price: trade.tp,
+				type: "takeProfit",
+				trade,
+			});
+		}
 	}
 
 	drawTradeHandle({ price, type, trade }: { price: number; type: TradeHandleType; trade: OpenTrade }) {
@@ -119,7 +159,6 @@ export class TradeLayer {
 		});
 
 		const handleStyleConfig = this.getHandleStyleConfig(type);
-
 		const handleConfig = handleStyleConfig.handle;
 		const lineConfig = handleStyleConfig.handleLine;
 
@@ -134,16 +173,9 @@ export class TradeLayer {
 
 		const handleY = y - handleHeight / 2;
 
-		this.handleHitboxes.push({
-			x: handleX,
-			y: handleY,
-			width: handleWidth,
-			height: handleHeight,
-			price,
-			viewport: this.viewport,
-			trade,
-			type,
-		});
+		this.handleHitboxes.push(
+			this.createHitBox({ price, trade, type, x: handleX, y: handleY, width: handleWidth, height: handleHeight }),
+		);
 
 		/**
 		 * =========================

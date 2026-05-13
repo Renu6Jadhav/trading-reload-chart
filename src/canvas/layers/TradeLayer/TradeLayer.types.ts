@@ -12,6 +12,20 @@ export type TradeHandleHitbox = {
 	type: TradeHandleType;
 	price: number;
 	viewport: ChartViewport;
+
+	labelArea: {
+		x: number;
+		y: number;
+		width: number;
+		height: number;
+	};
+
+	closeButtonArea: {
+		x: number;
+		y: number;
+		width: number;
+		height: number;
+	};
 };
 
 export type TradeLayerEventsOptions = {
@@ -19,6 +33,7 @@ export type TradeLayerEventsOptions = {
 	getHandleHitboxes: () => TradeHandleHitbox[];
 	onDrag?: (payload: { trade: OpenTrade; type: TradeHandleType; price: number }) => void;
 	onTradeModified?: (payload: { ticket: number; tp?: number; sl?: number }) => void;
+	onTradeCloseClicked?: (payload: { ticket: number; volume?: number }) => void;
 };
 
 export type TradeLayerOptions = {
