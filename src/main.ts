@@ -49,6 +49,65 @@ const crosshairLayer = new CrosshairLayer({
 	canvas: overlayCanvas,
 });
 
+const handleTradeModified = async ({ ticket, sl, tp }) => {
+	tradeLayer.setIsDragging(false);
+	const body = {
+		ticket,
+		...(tp ? { tp } : {}),
+		...(sl ? { sl } : {}),
+	};
+	try {
+		const response = await fetch(`https://api-tradingreload.pradeepjadhav.com/trade/modify`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+			cache: "no-store",
+		});
+
+		if (!response.ok) {
+			throw new Error(`Failed to fetch candles: ${response.status}`);
+		}
+
+		const data = await response.json();
+		console.log(data);
+	} catch (error) {
+		console.error("Failed to load candles", error);
+	}
+};
+
+const handleTPSLChange = ({ trade, type, price }) => {
+	if (!tradeLayer) {
+		tradeLayer.setIsDragging(false);
+		return;
+	}
+
+	tradeLayer.setIsDragging(true);
+	const updatedTrades = tradeLayer.trades.map((currentTrade) => {
+		if (currentTrade.ticket !== trade.ticket) {
+			return currentTrade;
+		}
+
+		if (type === "stopLoss") {
+			return {
+				...currentTrade,
+				sl: price,
+			};
+		}
+
+		if (type === "takeProfit") {
+			return {
+				...currentTrade,
+				tp: price,
+			};
+		}
+
+		return currentTrade;
+	});
+
+	tradeLayer.setTrades(updatedTrades);
+	tradeLayer.render();
+};
+
 /**
  * =========================
  * Load Historical Candles
@@ -80,6 +139,8 @@ const loadCandles = async () => {
 		tradeLayerEvents = new TradeLayerEvents({
 			canvas: tradesCanvas,
 			getHandleHitboxes: () => tradeLayer?.handleHitboxes ?? [],
+			onDrag: handleTPSLChange,
+			onTradeModified: handleTradeModified,
 		});
 
 		/**
@@ -125,7 +186,7 @@ const loadOpenTradesLiveFeed = async () => {
 			const positions: OpenTrade[] = data.positions ?? [];
 
 			tradeLayer.setTrades(positions);
-			tradeLayer.render();
+			tradeLayer.renderLiveFeed();
 		} catch (error) {
 			console.error("Failed to load open trades", error);
 		}
@@ -240,6 +301,10 @@ const handlePointerUpEvent = (event) => {
 	tradeLayerEvents?.handlePointerEvent(event);
 };
 
+const handlePointerEnterEvent = (event) => {
+	tradeLayerEvents?.handlePointerEvent(event);
+};
+
 const handlePointerLeaveEvent = () => {
 	crosshairLayer.hide();
 	crosshairLayer.render();
@@ -259,10 +324,10 @@ let isDragging = false;
 let lastMouseX = 0;
 let lastMouseY = 0;
 
-window.addEventListener("mousedown", handlePointerDownEvent);
-window.addEventListener("mouseup", handlePointerUpEvent);
-window.addEventListener("mousemove", handlePointerMoveEvent);
-window.addEventListener("mouseleave", handlePointerMoveEvent);
-window.addEventListener("mouseleave", handlePointerLeaveEvent);
+window.addEventListener("pointerdown", handlePointerDownEvent);
+window.addEventListener("pointerup", handlePointerUpEvent);
+window.addEventListener("pointermove", handlePointerMoveEvent);
+window.addEventListener("pointerenter", handlePointerEnterEvent);
+window.addEventListener("pointerleave", handlePointerLeaveEvent);
 window.addEventListener("wheel", handleWheelEvent, { passive: false });
 window.addEventListener("resize", handleResizeEvent);

@@ -30,6 +30,7 @@ export class TradeLayer {
 	readonly #canvas: HTMLCanvasElement;
 	readonly #ctx: CanvasRenderingContext2D;
 
+	isDragging: boolean;
 	trades: OpenTrade[] = [];
 	viewport: ChartViewport | null = null;
 	liveCandle: Candle | null = null;
@@ -57,6 +58,16 @@ export class TradeLayer {
 
 	setLiveCandle(candle: Candle) {
 		this.liveCandle = candle;
+	}
+
+	setIsDragging(isDragging: boolean) {
+		this.isDragging = isDragging;
+	}
+
+	renderLiveFeed() {
+		if (!this.isDragging) {
+			this.render();
+		}
 	}
 
 	render() {
@@ -128,6 +139,8 @@ export class TradeLayer {
 			y: handleY,
 			width: handleWidth,
 			height: handleHeight,
+			price,
+			viewport: this.viewport,
 			trade,
 			type,
 		});
