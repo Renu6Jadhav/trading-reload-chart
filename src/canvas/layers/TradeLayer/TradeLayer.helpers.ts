@@ -1,8 +1,5 @@
+import { COMMODITY_PAIRS, CRYPTO_PAIRS, JPY_PAIRS } from "../../../config/pairs";
 import type { TradeType } from "../../../models/Trade";
-
-const JPY_PAIRS = ["USDJPY", "GBPJPY", "AUDJPY", "EURJPY", "NZDJPY", "CADJPY"];
-const CRYPTO_PAIRS = ["BTCUSD", "ETHUSD"];
-const COMMODITY_PAIRS = ["XAUUSD", "USOIL", "UKOIL", "XAGUSD"];
 
 const getPipSize = (symbol: string): number => {
 	if (JPY_PAIRS.some((p) => symbol.includes(p.slice(3)))) return 0.01;

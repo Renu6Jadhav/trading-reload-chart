@@ -5,13 +5,16 @@ import { TradeLayerEvents } from "./canvas/layers/TradeLayer/TradeLayerEvents";
 import type { Candle } from "./models/Candle";
 import type { OpenTrade } from "./models/Trade";
 import "./main.css";
+import { CHART_CONFIG } from "./config/chartConfig";
+import { AxisLayerY } from "./canvas/layers/AxisLayerY/AxisLayerY";
 
 const candleCanvas = document.querySelector<HTMLCanvasElement>("#chart");
 const overlayCanvas = document.querySelector<HTMLCanvasElement>("#overlay");
 const tradesCanvas = document.querySelector<HTMLCanvasElement>("#trades");
+const axisYCanvas = document.querySelector<HTMLCanvasElement>("#axis-y");
 const activeSymbol = "GBPUSD";
 
-if (!candleCanvas || !overlayCanvas || !tradesCanvas) {
+if (!candleCanvas || !overlayCanvas || !tradesCanvas || !axisYCanvas) {
 	throw new Error("Canvas not found");
 }
 
@@ -32,6 +35,9 @@ const resizeCanvases = () => {
 
 	tradesCanvas.width = width;
 	tradesCanvas.height = height;
+
+	axisYCanvas.width = CHART_CONFIG.axis.axisY.width;
+	axisYCanvas.height = height;
 };
 
 resizeCanvases();
@@ -44,6 +50,19 @@ resizeCanvases();
 let candleLayer: ExistingCandlesLayer | null = null;
 let tradeLayer: TradeLayer | null = null;
 let tradeLayerEvents: TradeLayerEvents | null = null;
+let axisLayerY: AxisLayerY | null = null;
+
+const renderAllLayers = () => {
+	if (!candleLayer) {
+		return;
+	}
+	candleLayer.render();
+	tradeLayer?.setViewport(candleLayer.viewport);
+	tradeLayer?.render();
+	axisLayerY?.setViewport(candleLayer.viewport);
+	axisLayerY?.render();
+	crosshairLayer.render();
+};
 
 const crosshairLayer = new CrosshairLayer({
 	canvas: overlayCanvas,
@@ -136,6 +155,10 @@ const loadCandles = async () => {
 			canvas: tradesCanvas,
 		});
 
+		axisLayerY = new AxisLayerY({
+			canvas: axisYCanvas,
+		});
+
 		tradeLayerEvents = new TradeLayerEvents({
 			canvas: tradesCanvas,
 			getHandleHitboxes: () => tradeLayer?.handleHitboxes ?? [],
@@ -146,11 +169,7 @@ const loadCandles = async () => {
 		/**
 		 * Initial render
 		 */
-		candleLayer.render();
-		crosshairLayer.render();
-
-		tradeLayer.setViewport(candleLayer.viewport);
-		tradeLayer.render();
+		renderAllLayers();
 
 		await loadOpenTradesLiveFeed();
 
@@ -221,11 +240,8 @@ const initializeLiveFeed = () => {
 			}
 
 			candleLayer.updateLiveCandle(data.candle);
-			candleLayer.render();
-
-			tradeLayer.setViewport(candleLayer.viewport);
 			tradeLayer.setLiveCandle(candleLayer.liveCandle);
-			tradeLayer.render();
+			renderAllLayers();
 		} catch (error) {
 			console.error("Failed to parse websocket candle", error);
 		}
@@ -250,9 +266,7 @@ const handleWheelEvent = (event) => {
 	} else {
 		candleLayer.zoomHorizontally(zoomDelta);
 	}
-	candleLayer.render();
-	tradeLayer.setViewport(candleLayer.viewport);
-	tradeLayer.render();
+	renderAllLayers();
 };
 
 const handlePointerDownEvent = (event) => {
@@ -290,10 +304,7 @@ const handlePointerMoveEvent = (event) => {
 	candleLayer.panHorizontally(deltaX);
 	candleLayer.panVertically(deltaY);
 
-	candleLayer.render();
-
-	tradeLayer?.setViewport(candleLayer.viewport);
-	tradeLayer?.render();
+	renderAllLayers();
 };
 
 const handlePointerUpEvent = (event) => {

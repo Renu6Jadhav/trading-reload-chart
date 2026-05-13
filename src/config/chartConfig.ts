@@ -1,4 +1,5 @@
 //chartConfig.ts
+
 import type { ChartConfig, TradeHandleRectConfig } from "./chartConfig.types";
 
 const commonHandleProperties: TradeHandleRectConfig = {
@@ -59,6 +60,25 @@ export const CHART_CONFIG: ChartConfig = {
 		color: "rgba(255,255,255,0.35)",
 		thickness: 1,
 		style: "dashed",
+	},
+
+	axis: {
+		axisXHeight: 60,
+
+		axisY: {
+			width: 80,
+			backgroundColor: "#11131a",
+			borderColor: "rgb(89, 89, 89)",
+			borderWidth: 1,
+			textColor: "rgba(255, 255, 255, 0.60)",
+			font: "12px Arial",
+			textAlign: "left",
+			tickCount: 12,
+			tickColor: "rgba(255,255,255,0.06)",
+			tickWidth: 1,
+			tickLength: 8,
+			labelOffsetX: 8,
+		},
 	},
 
 	tradeHandles: {

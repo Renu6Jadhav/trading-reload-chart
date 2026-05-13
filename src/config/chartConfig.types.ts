@@ -678,6 +678,146 @@ export type ColorsConfig = {
 };
 
 /**
+ * Vertical price axis configuration.
+ *
+ * Controls appearance, spacing,
+ * typography, tick rendering,
+ * and alignment of the right-side
+ * price axis.
+ *
+ * @example
+ * {
+ *   width: 60,
+ *   backgroundColor: "#0f172a",
+ *   borderColor: "rgba(255,255,255,0.08)",
+ *   borderWidth: 1,
+ *   textColor: "rgba(255,255,255,0.8)",
+ *   font: "11px Inter",
+ *   textAlign: "left",
+ *   tickCount: 12,
+ *   tickColor: "rgba(255,255,255,0.06)",
+ *   tickWidth: 1,
+ *   tickLength: 8,
+ *   labelOffsetX: 12
+ * }
+ */
+export type AxisYConfig = {
+	/**
+	 * Width of right-side axis canvas.
+	 *
+	 * @example 60
+	 */
+	width: number;
+
+	/**
+	 * Axis background fill color.
+	 *
+	 * @example "#0f172a"
+	 */
+	backgroundColor: string;
+
+	/**
+	 * Left border color of axis.
+	 *
+	 * @example "rgba(255,255,255,0.08)"
+	 */
+	borderColor: string;
+
+	/**
+	 * Left border thickness in pixels.
+	 *
+	 * @example 1
+	 */
+	borderWidth: number;
+
+	/**
+	 * Label text color.
+	 *
+	 * @example "rgba(255,255,255,0.8)"
+	 */
+	textColor: string;
+
+	/**
+	 * Canvas font declaration.
+	 *
+	 * @example "11px Inter"
+	 */
+	font: string;
+
+	/**
+	 * Horizontal text alignment.
+	 *
+	 * @example "left"
+	 */
+	textAlign: CanvasTextAlign;
+
+	/**
+	 * Number of visible ticks.
+	 *
+	 * Higher values create denser axis labels.
+	 *
+	 * @example 12
+	 */
+	tickCount: number;
+
+	/**
+	 * Tick line color.
+	 *
+	 * @example "rgba(255,255,255,0.06)"
+	 */
+	tickColor: string;
+
+	/**
+	 * Tick line thickness in pixels.
+	 *
+	 * @example 1
+	 */
+	tickWidth: number;
+
+	/**
+	 * Horizontal tick line length in pixels.
+	 *
+	 * @example 8
+	 */
+	tickLength: number;
+
+	/**
+	 * Horizontal label offset from tick line.
+	 *
+	 * @example 12
+	 */
+	labelOffsetX: number;
+};
+
+/**
+ * Axis layout and rendering configuration.
+ *
+ * Controls sizing and appearance
+ * of chart axes.
+ *
+ * @example
+ * {
+ *   axisXHeight: 32,
+ *   axisY: {
+ *     width: 60
+ *   }
+ * }
+ */
+export type AxisConfig = {
+	/**
+	 * Bottom horizontal axis height in pixels.
+	 *
+	 * @example 32
+	 */
+	axisXHeight: number;
+
+	/**
+	 * Right-side vertical axis configuration.
+	 */
+	axisY: AxisYConfig;
+};
+
+/**
  * Complete chart configuration object.
  *
  * Contains all configurable behavior and styling
@@ -719,4 +859,9 @@ export type ChartConfig = {
 	 * Global chart color settings.
 	 */
 	colors: ColorsConfig;
+
+	/**
+	 * Chart axis configuration.
+	 */
+	axis: AxisConfig;
 };

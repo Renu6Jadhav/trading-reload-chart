@@ -9,9 +9,14 @@ index.html
   </head>
 
   <body>
-    <canvas id="chart"></canvas>
-    <canvas id="trades"></canvas>
-    <canvas id="overlay"></canvas>
+    <div id="chart-layout">
+      <div id="chart-stack">
+        <canvas id="chart"></canvas>
+        <canvas id="trades"></canvas>
+        <canvas id="overlay"></canvas>
+      </div>
+      <canvas id="axis-y"></canvas>
+    </div>
 
     <script type="module" src="/src/main.ts"></script>
   </body>
