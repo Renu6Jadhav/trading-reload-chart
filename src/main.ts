@@ -5,6 +5,7 @@ import { ExistingCandlesLayer } from "./canvas/layers/ExistingCandlesLayer";
 import { TradeLayer } from "./canvas/layers/TradeLayer/TradeLayer";
 import type { TradeHandleType, TradeProtectionHandleType } from "./canvas/layers/TradeLayer/TradeLayer.types";
 import { TradeLayerEvents } from "./canvas/layers/TradeLayer/TradeLayerEvents";
+import { VolumeLayer } from "./canvas/layers/VolumeLayer/VolumeLayer";
 import { CHART_CONFIG } from "./config/chartConfig";
 import type { Candle } from "./models/Candle";
 import type { OpenTrade } from "./models/Trade";
@@ -26,11 +27,14 @@ const toMs = (candle: Candle): Candle =>
 	candle.time < 1e12 ? { ...candle, time: candle.time * 1000 - BROKER_TZ_OFFSET_MS } : candle;
 
 const chartStack = getRequiredElement<HTMLDivElement>("#chart-stack");
+const volumeCanvas = getRequiredElement<HTMLCanvasElement>("#volume");
 const candleCanvas = getRequiredElement<HTMLCanvasElement>("#chart");
 const overlayCanvas = getRequiredElement<HTMLCanvasElement>("#overlay");
 const tradesCanvas = getRequiredElement<HTMLCanvasElement>("#trades");
 const axisXCanvas = getRequiredElement<HTMLCanvasElement>("#axis-x");
 const axisYCanvas = getRequiredElement<HTMLCanvasElement>("#axis-y");
+
+chartStack.style.backgroundColor = CHART_CONFIG.colors.background;
 
 type CanvasPoint = {
 	x: number;
@@ -73,6 +77,7 @@ function getRequiredElement<T extends Element>(selector: string): T {
 const resizeCanvases = () => {
 	const { plotWidth, plotHeight, axisYWidth, axisXHeight } = getCanvasLayoutSize();
 
+	setCanvasSize(volumeCanvas, plotWidth, plotHeight);
 	setCanvasSize(candleCanvas, plotWidth, plotHeight);
 	setCanvasSize(overlayCanvas, plotWidth, plotHeight);
 	setCanvasSize(tradesCanvas, plotWidth, plotHeight);
@@ -104,6 +109,7 @@ resizeCanvases();
  * Layers
  * =========================
  */
+let volumeLayer: VolumeLayer | null = null;
 let candleLayer: ExistingCandlesLayer | null = null;
 let tradeLayer: TradeLayer | null = null;
 let tradeLayerEvents: TradeLayerEvents | null = null;
@@ -131,6 +137,11 @@ const renderAllLayers = () => {
 	if (!candleLayer) {
 		return;
 	}
+
+	volumeLayer?.setCandles(candleLayer.candles);
+	volumeLayer?.setLiveCandle(candleLayer.liveCandle);
+	volumeLayer?.setViewport(candleLayer.viewport);
+	volumeLayer?.render();
 
 	candleLayer.render();
 
@@ -438,6 +449,11 @@ const fetchHistoricalCandles = async () => {
 };
 
 const initializeLayers = (candles: Candle[]) => {
+	volumeLayer = new VolumeLayer({
+		canvas: volumeCanvas,
+		candles,
+	});
+
 	candleLayer = new ExistingCandlesLayer({
 		canvas: candleCanvas,
 		candles,
@@ -551,7 +567,7 @@ const handleWheelEvent = (event: WheelEvent) => {
 
 	event.preventDefault();
 
-	const zoomDelta = event.deltaY < 0 ? 1 : -1;
+	const zoomDelta = event.deltaY < 0 ? -1 : 1;
 
 	if (event.ctrlKey || event.metaKey) {
 		candleLayer.zoomVertically(zoomDelta);

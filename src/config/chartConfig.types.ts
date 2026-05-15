@@ -35,6 +35,16 @@ export type CandlesConfig = {
 	livePriceLine: LivePriceLineConfig;
 };
 
+export type VolumeConfig = {
+	visible: boolean;
+	bullishColor: string;
+	bearishColor: string;
+	opacity: number;
+	height: number;
+	bottomOffset: number;
+	minBarHeight: number;
+};
+
 export type CrosshairConfig = {
 	color: string;
 	thickness: number;
@@ -195,6 +205,7 @@ export type AxisConfig = {
 export type ChartConfig = {
 	zoom: ZoomConfig;
 	candles: CandlesConfig;
+	volume: VolumeConfig;
 	crosshair: CrosshairConfig;
 	tradeHandles: TradeHandlesConfig;
 	colors: ColorsConfig;

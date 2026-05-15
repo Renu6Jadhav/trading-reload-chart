@@ -10,7 +10,6 @@ type ExistingCandlesLayerOptions = {
 	baseCandleGap?: number;
 	bullishColor?: string;
 	bearishColor?: string;
-	backgroundColor?: string;
 	offsetX?: number;
 	zoomX?: number;
 	priceRange?: number;
@@ -38,9 +37,20 @@ type ExistingCandlesLayerOptions = {
 	rightOffsetCandles?: number;
 };
 
-type VisibleRange = {
+export type VisibleRange = {
 	startIndex: number;
 	endIndex: number;
+};
+
+export type ExistingCandlesLayerViewport = {
+	minPrice: number;
+	maxPrice: number;
+	priceRange: number;
+	offsetX: number;
+	zoomX: number;
+	candleWidth: number;
+	candleGap: number;
+	candleSpacing: number;
 };
 
 type CandleYCoordinates = {
@@ -78,7 +88,6 @@ export class ExistingCandlesLayer {
 	baseCandleGap: number;
 	bullishColor: string;
 	bearishColor: string;
-	backgroundColor: string;
 	/**
 	 * Camera horizontal offset
 	 */
@@ -134,7 +143,6 @@ export class ExistingCandlesLayer {
 		this.baseCandleGap = options.baseCandleGap ?? CHART_CONFIG.candles.defaultGap;
 		this.bullishColor = options.bullishColor ?? CHART_CONFIG.colors.bullish;
 		this.bearishColor = options.bearishColor ?? CHART_CONFIG.colors.bearish;
-		this.backgroundColor = options.backgroundColor ?? CHART_CONFIG.colors.background;
 		this.zoomX = options.zoomX ?? 1;
 		this.autoFollowLatestCandle = options.autoFollowLatestCandle ?? CHART_CONFIG.candles.autoFollowLatestCandle;
 		this.autoFollowThresholdCandles =
@@ -219,7 +227,7 @@ export class ExistingCandlesLayer {
 		return this.candles[this.candles.length - 1];
 	}
 
-	get viewport() {
+	get viewport(): ExistingCandlesLayerViewport {
 		return {
 			minPrice: this.minPrice,
 			maxPrice: this.maxPrice,
@@ -306,7 +314,7 @@ export class ExistingCandlesLayer {
 		const chartWidth = this.#canvas.width;
 		const chartHeight = this.#canvas.height;
 
-		this.drawBackground(ctx, chartWidth, chartHeight);
+		this.clearCanvas(ctx, chartWidth, chartHeight);
 
 		if (this.candles.length === 0) {
 			return;
@@ -525,9 +533,8 @@ export class ExistingCandlesLayer {
 		return Math.max(minPriceRange, Math.min(nextPriceRange, maxPriceRange));
 	}
 
-	private drawBackground(ctx: CanvasRenderingContext2D, chartWidth: number, chartHeight: number) {
-		ctx.fillStyle = this.backgroundColor;
-		ctx.fillRect(0, 0, chartWidth, chartHeight);
+	private clearCanvas(ctx: CanvasRenderingContext2D, chartWidth: number, chartHeight: number) {
+		ctx.clearRect(0, 0, chartWidth, chartHeight);
 	}
 
 	private getCandleColor(candle: Candle) {

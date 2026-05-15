@@ -131,6 +131,16 @@ export const CHART_CONFIG: ChartConfig = {
 		},
 	},
 
+	volume: {
+		visible: true,
+		bullishColor: COLORS.green,
+		bearishColor: COLORS.red,
+		opacity: 0.35,
+		height: 200,
+		bottomOffset: 0,
+		minBarHeight: 1,
+	},
+
 	crosshair: {
 		color: "rgba(255,255,255,0.35)",
 		thickness: 1,
