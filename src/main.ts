@@ -3,8 +3,8 @@ import { AxisLayerY } from "./canvas/layers/AxisLayerY/AxisLayerY";
 import { CrosshairLayer } from "./canvas/layers/CrosshairLayer";
 import { ExistingCandlesLayer } from "./canvas/layers/ExistingCandlesLayer";
 import { TradeLayer } from "./canvas/layers/TradeLayer/TradeLayer";
-import { TradeLayerEvents } from "./canvas/layers/TradeLayer/TradeLayerEvents";
 import type { TradeHandleType } from "./canvas/layers/TradeLayer/TradeLayer.types";
+import { TradeLayerEvents } from "./canvas/layers/TradeLayer/TradeLayerEvents";
 import { CHART_CONFIG } from "./config/chartConfig";
 import type { Candle } from "./models/Candle";
 import type { OpenTrade } from "./models/Trade";
@@ -18,6 +18,16 @@ const axisXCanvas = document.querySelector<HTMLCanvasElement>("#axis-x");
 const axisYCanvas = document.querySelector<HTMLCanvasElement>("#axis-y");
 
 const activeSymbol = "GBPJPY";
+
+/**
+ * Broker (MT4/MT5) sends candle times in UTC+3 server time encoded as
+ * plain Unix seconds. Convert to true UTC milliseconds by multiplying
+ * by 1000 and stripping the 3-hour broker timezone offset.
+ */
+const BROKER_TZ_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC+3 → UTC
+
+const toMs = (candle: Candle): Candle =>
+	candle.time < 1e12 ? { ...candle, time: candle.time * 1000 - BROKER_TZ_OFFSET_MS } : candle;
 
 if (!chartStack || !candleCanvas || !overlayCanvas || !tradesCanvas || !axisXCanvas || !axisYCanvas) {
 	throw new Error("Canvas not found");
@@ -226,7 +236,7 @@ const loadCandles = async () => {
 		}
 
 		const data = await response.json();
-		const candles: Candle[] = data.candles ?? [];
+		const candles: Candle[] = (data.candles ?? []).map(toMs);
 
 		candleLayer = new ExistingCandlesLayer({
 			canvas: candleCanvas,
@@ -320,7 +330,7 @@ const initializeLiveFeed = () => {
 				return;
 			}
 
-			candleLayer.updateLiveCandle(data.candle);
+			candleLayer.updateLiveCandle(toMs(data.candle));
 			tradeLayer.setLiveCandle(candleLayer.liveCandle);
 
 			renderAllLayers();
