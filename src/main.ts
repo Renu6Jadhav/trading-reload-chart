@@ -29,24 +29,24 @@ if (!chartStack || !candleCanvas || !overlayCanvas || !tradesCanvas || !axisXCan
  * =========================
  */
 const resizeCanvases = () => {
-	const chartStackWidth = chartStack.clientWidth;
-	const chartStackHeight = chartStack.clientHeight;
+	const axisYWidth = CHART_CONFIG.axis.axisY.width;
 	const axisXHeight = CHART_CONFIG.axis.axisX.height;
-	const plotHeight = Math.max(0, chartStackHeight - axisXHeight);
+	const plotWidth = window.innerWidth - axisYWidth;
+	const plotHeight = Math.max(0, window.innerHeight - axisXHeight);
 
-	candleCanvas.width = chartStackWidth;
+	candleCanvas.width = plotWidth;
 	candleCanvas.height = plotHeight;
 
-	overlayCanvas.width = chartStackWidth;
+	overlayCanvas.width = plotWidth;
 	overlayCanvas.height = plotHeight;
 
-	tradesCanvas.width = chartStackWidth;
+	tradesCanvas.width = plotWidth;
 	tradesCanvas.height = plotHeight;
 
-	axisXCanvas.width = chartStackWidth;
+	axisXCanvas.width = plotWidth;
 	axisXCanvas.height = axisXHeight;
 
-	axisYCanvas.width = CHART_CONFIG.axis.axisY.width;
+	axisYCanvas.width = axisYWidth;
 	axisYCanvas.height = plotHeight;
 };
 
